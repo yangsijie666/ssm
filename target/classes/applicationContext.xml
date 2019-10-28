@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <!-- 读取数据库属性文件 -->
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="location" value="classpath:db.properties"/>
+    </bean>
+
+    <!-- 配置数据源 -->
+    <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+        <property name="driverClassName" value="${driver}"/>
+        <property name="url" value="${url}"/>
+        <property name="username" value="${username}"/>
+        <property name="password" value="${password}"/>
+    </bean>
+
+    <!-- 配置sqlSessionFactory -->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+        <!-- 通过mybatis配置文件，配置mapper文件 -->
+        <property name="configLocation" value="classpath:mybatis.cfg.xml"/>
+    </bean>
+
+    <!-- 声明式事务配置 开始 -->
+    <!-- 配置事务管理器 -->
+    <bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+    <!-- 配置事务通知 -->
+    <tx:advice id="txAdvice" transaction-manager="txManager">
+        <tx:attributes>
+            <!-- 配置哪些方法使用什么样的事务（方法名为切入点的方法名），配置事务的传播特性 -->
+            <tx:method name="save" propagation="REQUIRED"/>
+            <!-- read-only为true，则表示只读事务，从而忽略不需要的事务，因为读取不会修改数据，因此将其置为true即可 -->
+            <tx:method name="get*" read-only="true"/>
+            <!-- 保险起见，最后匹配所有的方法 -->
+            <tx:method name="*" propagation="REQUIRED"/>
+        </tx:attributes>
+    </tx:advice>
+    <!-- 配置aop，调用上面的通知（什么时候，做什么），决定切入点（在哪儿做） -->
+    <aop:config>
+        <aop:pointcut id="pointCut" expression="execution(* cn.sxt.service.impl.*.*(..))"/>
+        <aop:advisor advice-ref="txAdvice" pointcut-ref="pointCut"/>
+    </aop:config>
+    <!-- 声明式事务配置 结束-->
+
+    <!-- 配置spring注解扫描器 -->
+    <context:component-scan base-package="cn.sxt"/>
+
+</beans>
